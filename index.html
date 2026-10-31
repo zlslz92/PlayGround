@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#223a28" />
+  <meta name="description" content="이슬잎 마을에 숨어든 색깔 슬라임을 찾아 사냥하는 엘프 숨바꼭질 게임" />
+  <title>이슬잎 사냥꾼 · 숨바꼭질 사냥</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232f4d2f'/%3E%3Cpath d='M46 16C28 17 17 29 18 47c15 1 27-9 28-31Z' fill='%23a9c467'/%3E%3Cpath d='M22 44c6-10 13-16 20-21' stroke='%23f6efd6' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./fonts.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene" aria-label="이슬잎 마을 숨바꼭질 사냥 게임 화면"></canvas>
+    <div class="world-grade" aria-hidden="true"></div>
+    <div id="focus-overlay" aria-hidden="true">
+      <div class="focus-vignette"></div>
+      <div class="focus-whisper">숨결을 읽는 중</div>
+    </div>
+    <div id="dusk-overlay" aria-hidden="true"></div>
+
+    <div id="hud" class="hidden" aria-hidden="true">
+      <div class="hud-top">
+        <div class="mission-card panel">
+          <div class="mission-icon">
+            <svg viewBox="0 0 40 40" aria-hidden="true">
+              <path d="M20 7c8 0 13 6 13 14 0 7-5 12-13 12S7 28 7 21C7 13 12 7 20 7Z" fill="#7fa34b"/>
+              <path d="M20 9c5 0 9 4 10 9-4-2-9-2-13 1-2 2-3 5-3 8-3-2-5-5-5-9 0-5 4-9 11-9Z" fill="#a5c46b"/>
+              <circle cx="16" cy="20" r="1.8" fill="#28351f"/>
+              <circle cx="24" cy="20" r="1.8" fill="#28351f"/>
+              <path d="M18 25c1.2 1 2.8 1 4 0" stroke="#28351f" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+              <circle cx="13.5" cy="23.5" r="1.4" fill="#e7a6b8" opacity=".8"/>
+              <circle cx="26.5" cy="23.5" r="1.4" fill="#e7a6b8" opacity=".8"/>
+            </svg>
+          </div>
+          <div class="mission-text">
+            <span class="eyebrow">숨은 슬라임</span>
+            <div class="mission-count"><strong id="caught-count">0</strong><span>/ <span id="total-count">8</span></span></div>
+            <div class="pips" id="pips"></div>
+          </div>
+          <div class="score-box">
+            <span class="eyebrow">사냥 점수</span>
+            <strong id="score">0</strong>
+          </div>
+        </div>
+
+        <div class="timer-wrap">
+          <div class="timer-pill panel">
+            <svg class="sun-icon" viewBox="0 0 32 32" aria-hidden="true">
+              <circle cx="16" cy="16" r="6.5" fill="#e9b654"/>
+              <g stroke="#e9b654" stroke-width="2" stroke-linecap="round">
+                <path d="M16 2.5v3.2M16 26.3v3.2M2.5 16h3.2M26.3 16h3.2M6.5 6.5l2.3 2.3M23.2 23.2l2.3 2.3M25.5 6.5l-2.3 2.3M8.8 23.2l-2.3 2.3"/>
+              </g>
+            </svg>
+            <div class="timer-text">
+              <span class="eyebrow">해 질 녘까지</span>
+              <strong id="timer">2:45</strong>
+            </div>
+          </div>
+          <div class="timer-track"><div id="timer-fill"></div></div>
+        </div>
+
+        <div class="hud-buttons">
+          <button class="icon-btn" id="btn-sound" aria-label="소리 끄기" title="소리">
+            <svg class="ico-on" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 9v6h3.5L13 20V4L7.5 9H4Z" fill="currentColor"/>
+              <path d="M16 8.5c1.6 1.9 1.6 5.1 0 7M18.7 6c3 3.2 3 8.8 0 12" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+            </svg>
+            <svg class="ico-off" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 9v6h3.5L13 20V4L7.5 9H4Z" fill="currentColor"/>
+              <path d="m16.5 9.5 5 5m0-5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button class="icon-btn" id="btn-pause" aria-label="일시정지" title="일시정지">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="3.6" height="14" rx="1.2" fill="currentColor"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="hud-bottom">
+        <div class="hint panel" id="desktop-hint">
+          <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>이동</span></div>
+          <div><kbd>Shift</kbd><span>집중</span></div>
+          <div><kbd class="mouse">●</kbd><span>조준 · 발사</span></div>
+        </div>
+
+        <div class="detect panel" id="detect">
+          <div class="detect-head">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>
+            <span>숨결 감지</span>
+            <em id="detect-label">조용함</em>
+          </div>
+          <div class="detect-bars" id="detect-bars">
+            <i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </div>
+
+        <button id="focus-btn" class="focus-btn" aria-label="집중 (Shift)">
+          <svg class="focus-ring" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="ring-bg" cx="60" cy="60" r="53"/>
+            <circle id="focus-ring" cx="60" cy="60" r="53"/>
+          </svg>
+          <svg class="focus-eye" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M3.5 16S8 8 16 8s12.5 8 12.5 8S24 24 16 24 3.5 16 3.5 16Z" fill="none" stroke="currentColor" stroke-width="2"/>
+            <circle cx="16" cy="16" r="4.1" fill="currentColor"/>
+            <circle cx="17.3" cy="14.5" r="1.1" fill="#f6efd6"/>
+          </svg>
+          <span class="focus-word">집중</span>
+          <span class="focus-key">SHIFT</span>
+        </button>
+      </div>
+
+      <div id="mobile-hint" class="mobile-hint">화면을 눌러 조준하고, 놓아 발사하세요</div>
+    </div>
+
+    <div id="joystick" class="hidden" aria-hidden="true">
+      <div class="joy-base">
+        <div class="joy-cross"></div>
+        <div id="joy-knob" class="joy-knob"></div>
+      </div>
+      <span class="joy-label">이동</span>
+    </div>
+
+    <div id="reticle" class="hidden" aria-hidden="true">
+      <svg viewBox="0 0 64 64">
+        <g class="reticle-arcs" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <path d="M8 22V11a3 3 0 0 1 3-3h11"/>
+          <path d="M42 8h11a3 3 0 0 1 3 3v11"/>
+          <path d="M56 42v11a3 3 0 0 1-3 3H42"/>
+          <path d="M22 56H11a3 3 0 0 1-3-3V42"/>
+        </g>
+        <circle cx="32" cy="32" r="2.4" fill="currentColor"/>
+        <circle class="reticle-soft" cx="32" cy="32" r="13" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/>
+      </svg>
+    </div>
+
+    <div id="floaters" aria-hidden="true"></div>
+    <div id="toast" role="status"></div>
+    <div id="combo-badge" class="hidden">
+      <span>연속 사냥</span><strong>×<span id="combo-value">2</span></strong>
+    </div>
+    <div id="hit-marker" aria-hidden="true"></div>
+
+    <section id="screen-title" class="screen">
+      <div class="title-vignette" aria-hidden="true"></div>
+      <div class="title-panel">
+        <div class="corner-leaf" aria-hidden="true">
+          <svg viewBox="0 0 80 80"><path d="M68 8C36 10 16 32 14 66c30 2 52-20 54-58Z" fill="#6f9440" opacity=".22"/><path d="M24 58c10-16 22-27 34-38" stroke="#5a7b35" stroke-width="2" fill="none" opacity=".4" stroke-linecap="round"/></svg>
+        </div>
+        <div class="title-eyebrow">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4C11 5 5 11 6 20c9 1 15-5 14-16Z" fill="currentColor"/><path d="M9 17c3-5 6-8 9-10" stroke="#f6efd6" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
+          이슬잎 마을 · 숨바꼭질 사냥
+        </div>
+        <h1>이슬잎<br /><em>사냥꾼</em></h1>
+        <div class="title-en">THE DEWLEAF HIDE &amp; SEEK</div>
+        <p class="story">
+          색을 바꾸는 슬라임들이 이슬잎 마을에 몰래 숨어들었습니다.<br />
+          숲의 사냥꾼 <b>리라</b>가 활을 메고, 숨죽인 손님들을 찾아냅니다.
+          <span class="story-quote">“배경이 곧 그들의 갑옷이지.”</span>
+        </p>
+        <div class="character-strip">
+          <div class="avatar" aria-hidden="true">
+            <svg viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="31" fill="#dce7bd"/>
+              <path d="M31 10c-9 0-14 6-14 14 0 4 1 7 3 9l-1 14c0 4 3 7 7 7h12c4 0 7-3 7-7V33c2-2 3-5 3-9 0-8-6-14-17-14Z" fill="#e7b868"/>
+              <path d="M18 30c0 6 5 11 14 11s14-5 14-11v-3c-4 4-9 6-14 6s-10-2-14-6v3Z" fill="#f4cf8a"/>
+              <ellipse cx="32" cy="37" rx="10.5" ry="11" fill="#f3c8a4"/>
+              <path d="M21.5 34c1.5-2 4-3 6-2.5" stroke="#a5682f" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+              <path d="M42.5 34c-1.5-2-4-3-6-2.5" stroke="#a5682f" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+              <circle cx="27" cy="37.5" r="1.7" fill="#3d4a22"/>
+              <circle cx="37" cy="37.5" r="1.7" fill="#3d4a22"/>
+              <path d="M29.5 43c1.5 1.2 3.5 1.2 5 0" stroke="#a96058" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+              <path d="M18 31c-4-1-7 1-8 4 3 1 6 0 8-4Z" fill="#f3c8a4"/>
+              <path d="M46 31c4-1 7 1 8 4-3 1-6 0-8-4Z" fill="#f3c8a4"/>
+              <path d="M44 16c5-4 10-3 11 1-3 2-7 3-11 1Z" fill="#e7b868"/>
+            </svg>
+          </div>
+          <div class="char-info">
+            <strong>리라 <span>Lyra</span></strong>
+            <small>숲의 사냥꾼 · 이슬잎 마을</small>
+          </div>
+          <div class="mission-chip"><span>슬라임</span><b>8</b><span>마리</span></div>
+        </div>
+        <ul class="howto">
+          <li><span class="k">숨결</span> 슬라임은 주변 색으로 몸을 감춥니다</li>
+          <li><span class="k">집중</span> <span class="desktop-only"><kbd>Shift</kbd> 로 </span><span class="touch-only">집중 버튼으로 </span>숨은 윤곽을 드러내세요</li>
+          <li><span class="k">사격</span> 조준하고 한 발로 잡아야 합니다</li>
+        </ul>
+        <button id="btn-start" class="btn primary" aria-label="Play">
+          <span>사냥 시작</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="title-meta">
+          <span>WASD 이동</span><i></i><span>마우스 조준</span><i></i><span>클릭 발사</span><i></i><span>Shift 집중</span>
+        </div>
+      </div>
+      <div class="title-foot">
+        <span><b>이슬잎 마을</b> · 해 질 녘</span>
+        <span class="foot-brand">A CAMOUFLAGE HUNT</span>
+      </div>
+    </section>
+
+    <section id="screen-pause" class="screen modal hidden">
+      <div class="modal-card">
+        <div class="modal-leaf" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M20 4C11 5 5 11 6 20c9 1 15-5 14-16Z" fill="currentColor"/></svg>
+        </div>
+        <span class="eyebrow">잠시 숨을 고르는 중</span>
+        <h2>사냥을 멈췄습니다</h2>
+        <p>숲은 조용히 기다리고 있어요.</p>
+        <button id="btn-resume" class="btn primary" aria-label="Resume">계속 사냥하기</button>
+        <button id="btn-quit" class="btn ghost">처음으로 돌아가기</button>
+      </div>
+    </section>
+
+    <section id="screen-result" class="screen modal hidden">
+      <div class="result-card">
+        <div class="result-seal" id="result-seal">A</div>
+        <span class="eyebrow" id="result-eyebrow">사냥 기록</span>
+        <h2 id="result-title">모두 잡았다!</h2>
+        <p id="result-desc">이슬잎 마을에 다시 평화가 찾아왔습니다.</p>
+        <div class="result-stats">
+          <div><span>점수</span><strong id="result-score">0</strong></div>
+          <div><span>잡은 슬라임</span><strong id="result-caught">0 / 8</strong></div>
+          <div><span>남은 시간</span><strong id="result-time">0:00</strong></div>
+          <div><span>최고 연속</span><strong id="result-combo">×1</strong></div>
+        </div>
+        <button id="btn-again" class="btn primary" aria-label="Play again">다시 사냥하기</button>
+        <button id="btn-title" class="btn ghost">마을로 돌아가기</button>
+        <div class="result-note">리라의 활시위가 다시 조용해집니다.</div>
+      </div>
+    </section>
+
+    <div id="boot">
+      <div class="boot-mark">
+        <svg viewBox="0 0 64 64"><path d="M54 8C28 10 12 28 13 54c23 1 39-15 41-46Z" fill="#a5c26b"/><path d="M22 46c8-14 18-24 27-32" stroke="#f6efd6" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
+      </div>
+      <p>이슬잎 마을로 들어가는 중...</p>
+    </div>
+  </div>
+
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js" } }
+  </script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
