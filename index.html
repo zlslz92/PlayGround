@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+    <meta name="theme-color" content="#0b1712" />
+    <meta name="description" content="Slime & Seek — a moonlit hide-and-seek game about painting yourself into the grove." />
+    <title>Slime &amp; Seek</title>
+    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-role="hider">
+    <main id="app">
+      <canvas id="game" aria-label="The moonlit grove"></canvas>
+      <div class="screen-grain" aria-hidden="true"></div>
+
+      <!-- ============================== HUD ============================== -->
+      <header id="hud" class="hud is-hidden" aria-live="polite">
+        <div class="hud-left">
+          <div class="team-badge">
+            <span class="team-dot" id="team-dot"></span>
+            <span id="role-label">SLIME TEAM</span>
+          </div>
+          <p id="objective" class="objective">Stay hidden until moonhigh.</p>
+        </div>
+
+        <div class="clock-wrap">
+          <div class="clock-label" id="clock-label">MOONHIGH IN</div>
+          <div class="clock" id="clock">1:40</div>
+          <div class="team-dots" id="team-dots" aria-hidden="true"></div>
+        </div>
+
+        <div class="hud-right">
+          <button class="icon-btn" id="pause-btn" aria-label="Pause game" title="Pause (Esc)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" /></svg>
+          </button>
+          <button class="icon-btn" id="mute-btn" aria-label="Mute sound" title="Mute (M)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z" /><path class="sound-wave" d="M16 9c1.4 1.5 1.4 4.5 0 6M18.5 6.5c3 3 3 8 0 11" /></svg>
+          </button>
+        </div>
+      </header>
+
+      <div id="countdown" class="countdown is-hidden" aria-live="assertive"></div>
+
+      <!-- ======================= HIDER DISGUISE UI ======================= -->
+      <section id="hider-panel" class="hider-panel is-hidden" aria-label="Camouflage controls">
+        <div class="camo-strip">
+          <div class="camo-readout">
+            <span class="eyebrow">BLEND</span>
+            <strong id="camo-value">0<small>%</small></strong>
+          </div>
+          <div class="camo-track"><i id="camo-fill"></i></div>
+          <div class="camo-target">
+            <span class="eyebrow">TERRAIN</span>
+            <span id="target-name">Open glade</span>
+          </div>
+        </div>
+
+        <div id="disguise-tray" class="disguise-tray">
+          <div class="shape-column">
+            <div class="tray-heading">
+              <span class="eyebrow">SHAPE</span>
+              <span id="shape-name" class="tray-value">Blob</span>
+            </div>
+            <div id="shape-bar" class="shape-bar" role="group" aria-label="Choose a shape"></div>
+          </div>
+
+          <div class="paint-column">
+            <div class="tray-heading">
+              <span class="eyebrow">PAINT</span>
+              <span id="paint-status" class="tray-value">Tap the slime to brush</span>
+            </div>
+            <div class="paint-row">
+              <div class="paint-studio">
+                <canvas id="paint-canvas" width="96" height="96" aria-label="Paint your slime"></canvas>
+                <span class="brush-hint">brush</span>
+              </div>
+              <div class="paint-tools">
+                <div id="palette" class="palette" role="group" aria-label="Paint palette"></div>
+                <div class="paint-actions">
+                  <button id="sample-btn" class="mini-btn" title="Sample the ground (F)">Match ground</button>
+                  <div class="ground-swatch" title="Colour under your slime">
+                    <canvas id="ground-swatch" width="80" height="80"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="action-column">
+            <button id="action-btn" class="action-btn" title="Use nearby object (E)">
+              <span class="action-icon">✦</span>
+              <span id="action-label">Copy</span>
+              <kbd>E</kbd>
+            </button>
+            <button id="climb-btn" class="action-btn secondary" title="Cling to stone (Space)">
+              <span class="action-icon">↟</span>
+              <span>Climb</span>
+              <kbd>Space</kbd>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================= SEEKER CONTROLS ======================= -->
+      <section id="seeker-panel" class="seeker-panel is-hidden" aria-label="Warden controls">
+        <div class="seeker-status">
+          <span class="eyebrow">SLIMES TAGGED</span>
+          <strong id="tag-count">0 / 5</strong>
+          <div id="tag-pips" class="tag-pips"></div>
+        </div>
+        <div class="seeker-actions">
+          <button id="scan-btn" class="action-btn" title="Lantern pulse (E)">
+            <span class="action-icon">◉</span>
+            <span>Lantern pulse</span>
+            <kbd>E</kbd>
+            <i id="scan-cooldown" class="cooldown"></i>
+          </button>
+          <button id="tag-btn" class="action-btn warm" title="Tag nearby slime (Space)">
+            <span class="action-icon">✋</span>
+            <span>Tag</span>
+            <kbd>Space</kbd>
+          </button>
+        </div>
+      </section>
+
+      <!-- ======================= MOVE / MODE ======================= -->
+      <div id="lower-controls" class="lower-controls is-hidden">
+        <div id="hint" class="hint">Q · disguise mode · touch a landmark to take its shape</div>
+
+        <div id="joystick" class="joystick" aria-label="Movement joystick">
+          <div class="joystick-ring"></div>
+          <div id="joystick-knob" class="joystick-knob"></div>
+          <span class="joy-arrow up">▲</span>
+          <span class="joy-arrow down">▼</span>
+          <span class="joy-arrow left">◀</span>
+          <span class="joy-arrow right">▶</span>
+        </div>
+
+        <button id="mode-btn" class="mode-btn" title="Switch move / disguise (Q)">
+          <span id="mode-icon" class="mode-icon">◐</span>
+          <span id="mode-label">Disguise</span>
+          <kbd>Q</kbd>
+        </button>
+      </div>
+
+      <div id="toast" class="toast" role="status"></div>
+
+      <!-- ============================== TITLE ============================== -->
+      <section id="title-screen" class="screen title-screen">
+        <div class="title-top">
+          <span class="field-mark">FIELD NOTE № 07</span>
+          <button id="guide-btn" class="text-btn" type="button">Field guide</button>
+        </div>
+
+        <div class="title-main">
+          <p class="kicker">A MOONLIT HIDE &amp; SEEK</p>
+          <h1 class="wordmark"><span>Slime</span><em>&amp;</em><span>Seek</span></h1>
+          <p class="lede">Paint yourself into the grove. Hold still. Try not to giggle.</p>
+
+          <div class="role-select" role="group" aria-label="Choose your team">
+            <button class="role-card selected" data-role="hider" type="button" aria-pressed="true">
+              <span class="role-art hider-art" aria-hidden="true">
+                <svg viewBox="0 0 120 90"><path d="M24 68c-9-3-13-12-11-22 2-10 10-19 20-23 7-3 11 2 18 2 13 0 23 8 23 20 0 13-11 21-25 23-9 2-17 2-25 0Z"/><path d="M43 49c2-3 6-3 8 0M66 49c2-3 6-3 8 0"/><circle cx="45" cy="52" r="1.7"/><circle cx="70" cy="52" r="1.7"/><path d="M34 61c6 4 15 5 25 3" opacity=".35"/></svg>
+              </span>
+              <span class="role-copy">
+                <span class="role-name">Slime team</span>
+                <span class="role-desc">Mimic shapes. Paint your skin. Survive moonhigh.</span>
+              </span>
+              <span class="role-tag">HIDE</span>
+            </button>
+            <button class="role-card" data-role="seeker" type="button" aria-pressed="false">
+              <span class="role-art seeker-art" aria-hidden="true">
+                <svg viewBox="0 0 120 90"><path d="M39 75c-7-8-9-20-6-30 3-12 12-18 23-18 13 0 23 8 25 22 2 11-1 20-8 27-10 9-24 8-34-1Z"/><path d="M39 34h42M43 34l3-14h28l4 14"/><path d="M51 50c4-4 11-4 15 0"/><circle cx="59" cy="50" r="3"/><path d="M77 38c8 3 11 10 10 18" opacity=".5"/><circle cx="95" cy="52" r="7" opacity=".55"/></svg>
+              </span>
+              <span class="role-copy">
+                <span class="role-name">Warden</span>
+                <span class="role-desc">Sweep the lantern. Pulse for heartbeats. Tag every slime.</span>
+              </span>
+              <span class="role-tag">SEEK</span>
+            </button>
+          </div>
+
+          <button id="play-btn" class="play-btn" type="button">Play</button>
+
+          <div class="title-foot">
+            <span class="mouse-hint">WASD to move · Q to disguise · Space to climb</span>
+            <span id="best-line" class="best-line">BEST · 0</span>
+          </div>
+        </div>
+
+        <div class="title-side" aria-hidden="true">
+          <span class="side-rule"></span>
+          <p>“A slime is only as invisible<br />as the story it tells the ground.”</p>
+          <span class="side-credit">— Grovekeeper's almanac</span>
+        </div>
+      </section>
+
+      <!-- ============================== GUIDE ============================== -->
+      <section id="guide" class="screen guide-screen is-hidden" aria-label="Field guide">
+        <div class="guide-book">
+          <div class="guide-head">
+            <span class="field-mark">FIELD GUIDE</span>
+            <button id="guide-close" class="text-btn" type="button">Back</button>
+          </div>
+          <div class="guide-title-row">
+            <h2>How to disappear</h2>
+            <span class="specimen">Specimen: <i>Vitreus pudor</i></span>
+          </div>
+          <div class="guide-grid">
+            <article>
+              <span class="guide-num">01</span>
+              <h3>Read the ground</h3>
+              <p>Each patch wants a shape. Press <kbd>Q</kbd> to switch between moving and disguising. In disguise, hold still while the blend meter fills.</p>
+            </article>
+            <article>
+              <span class="guide-num">02</span>
+              <h3>Touch a landmark</h3>
+              <p>Walk against a fern, boulder, mushroom or crystal to copy its shape. Press <kbd>E</kbd> near one to copy it deliberately.</p>
+            </article>
+            <article>
+              <span class="guide-num">03</span>
+              <h3>Paint the slime</h3>
+              <p>Pick a colour, then drag on the slime portrait. <strong>Match ground</strong> (<kbd>F</kbd>) samples the whole palette beneath you. Texture counts as much as hue.</p>
+            </article>
+            <article>
+              <span class="guide-num">04</span>
+              <h3>Use the walls</h3>
+              <p>Near a stone, press <kbd>Space</kbd> to cling. Climbing flattens you into the rock face and disguises you as stone. Press again to drop.</p>
+            </article>
+            <article>
+              <span class="guide-num">05</span>
+              <h3>Outwit the warden</h3>
+              <p>Movement breaks camouflage. Dash with <kbd>Shift</kbd>; the lantern can hear a hurried slime. Boulders block its sight, and a crowded grove hides you better than empty ground.</p>
+            </article>
+            <article>
+              <span class="guide-num">06</span>
+              <h3>Take a turn as warden</h3>
+              <p>As Warden, sweep the beam with the mouse or your direction. <kbd>E</kbd> pulses for nearby heartbeats; <kbd>Space</kbd> tags a slime at close range. Tag all five before the moon peaks.</p>
+            </article>
+          </div>
+          <div class="guide-foot">
+            <span>SLIME TEAM · survive 1:40</span>
+            <span>WARDEN · tag all 5</span>
+            <span>BEST PLAYED WITH SOUND</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== PAUSE ============================== -->
+      <section id="pause-screen" class="screen modal-screen is-hidden" aria-label="Paused">
+        <div class="modal-card">
+          <span class="eyebrow">THE GROVE HOLDS ITS BREATH</span>
+          <h2>Paused</h2>
+          <p>Take a moment. The lantern will wait.</p>
+          <div class="modal-actions">
+            <button id="resume-btn" class="play-btn small" type="button">Resume</button>
+            <button id="pause-restart-btn" class="ghost-btn" type="button">Restart match</button>
+            <button id="quit-btn" class="text-btn" type="button">Leave the grove</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== RESULTS ============================== -->
+      <section id="results-screen" class="screen modal-screen results-screen is-hidden" aria-label="Match results">
+        <div class="modal-card results-card">
+          <span id="results-kicker" class="eyebrow">MOONHIGH</span>
+          <h2 id="results-title">The grove kept you</h2>
+          <p id="results-text">The moon passed overhead and the warden never saw a thing.</p>
+          <div class="result-stats">
+            <div><span>SCORE</span><strong id="results-score">0</strong></div>
+            <div><span id="results-detail-label">BLEND BONUS</span><strong id="results-detail">0</strong></div>
+            <div><span>BEST</span><strong id="results-best">0</strong></div>
+          </div>
+          <p id="results-record" class="record-line is-hidden">✦ New field record ✦</p>
+          <div class="modal-actions">
+            <button id="again-btn" class="play-btn small" type="button">Play again</button>
+            <button id="switch-btn" class="ghost-btn" type="button">Try the other side</button>
+            <button id="results-quit-btn" class="text-btn" type="button">Leave the grove</button>
+          </div>
+        </div>
+      </section>
+
+      <div id="rotate-hint" class="rotate-hint" aria-hidden="true">Turn your phone sideways for a wider grove</div>
+    </main>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
